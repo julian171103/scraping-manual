@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dashboard de resultados del scraping</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&display=swap">
+<style>
+:root{--bg:#eef2f5;--panel:#fff;--ink:#14212b;--mute:#4d6070;--line:#cdd8e0;--acc:#1b6b8f;--acc2:#e0a526;--acc-ink:#fff;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e171e;--panel:#16232d;--ink:#e6eef3;--mute:#9db0be;--line:#2b3d4a;--acc:#6bbbe0;--acc2:#f0c35a;--acc-ink:#0e171e}}
+:root[data-theme="dark"]{--bg:#0e171e;--panel:#16232d;--ink:#e6eef3;--mute:#9db0be;--line:#2b3d4a;--acc:#6bbbe0;--acc2:#f0c35a;--acc-ink:#0e171e}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+h1,h2{font-family:"Bricolage Grotesque",system-ui,sans-serif;margin:0;line-height:1.1}
+main{max-width:1040px;margin:0 auto;padding:28px 20px 70px}
+h1{font-size:clamp(30px,5vw,46px);font-weight:800}
+h2{font-size:22px;font-weight:800;margin:36px 0 12px}
+.sub{color:var(--mute);margin:8px 0 0;max-width:64ch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+.drop{margin-top:22px;border:2px dashed var(--acc);border-radius:12px;padding:20px;text-align:center}
+.drop.over{background:color-mix(in srgb,var(--acc) 12%,transparent)}
+.btn{background:var(--acc);color:var(--acc-ink);border:0;border-radius:8px;padding:10px 16px;font:inherit;font-weight:600;cursor:pointer}
+:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.msg{margin-top:10px;font-size:14px;color:var(--mute)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi .v{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-size:34px;font-weight:800;line-height:1.1}
+.kpi .l{color:var(--mute);font-size:14px}
+.tag{font-size:12px;color:var(--mute)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:720px){.grid2{grid-template-columns:1fr}}
+.stack{display:flex;height:26px;border-radius:6px;overflow:hidden;margin:10px 0 6px}
+.stack div{display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff}
+.bars{display:flex;align-items:flex-end;gap:6px;height:170px;margin-top:10px;overflow-x:auto;padding-bottom:2px}
+.bar{flex:1 0 34px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%}
+.bar i{display:block;width:100%;background:var(--acc);border-radius:4px 4px 0 0;min-height:2px}
+.bar b{font-size:12px}.bar span{font-size:11px;color:var(--mute);white-space:nowrap}
+.prog{height:12px;background:var(--line);border-radius:6px;overflow:hidden;margin:6px 0}
+.prog div{height:100%;background:var(--acc2)}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+select{font:inherit;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+a{color:var(--acc)}
+ul.chk{list-style:none;padding:0;margin:0}ul.chk li{padding:4px 0}
+.ok{color:#1d7a4a}.no{color:#b3392f}
+@media(prefers-color-scheme:dark){.ok{color:#5fd18f}.no{color:#ff8b80}}
+.hide{display:none}
+</style>
+</head>
+<body>
+<main>
+<h1>Dashboard del scraping</h1>
+<p class="sub">Carga tus archivos JSON y se grafican aquí mismo. Los datos <b>no salen de tu navegador</b>: no se suben a ningún servidor.</p>
+
+<div class="drop" id="drop">
+  <p style="margin:0 0 10px"><b>Arrastra aquí</b> <code>publicaciones.json</code>, <code>perfil.json</code> y <code>resumen_listas.json</code> (de tu carpeta <code>datos/</code>)</p>
+  <button class="btn" id="pick">Elegir archivos</button>
+  <input type="file" id="file" accept=".json,application/json" multiple hidden>
+  <div class="msg" id="msg">Mientras no cargues nada se muestran las cifras verificadas en las salidas de consola.</div>
+</div>
+<p class="tag">No cargues <code>seguidores_muestra.json</code> ni <code>seguidos_muestra.json</code>: contienen nombres de terceros y este panel no los necesita.</p>
+
+<h2>Resumen <span class="tag" id="src"></span></h2>
+<div class="kpis" id="kpis"></div>
+
+<div class="grid2" style="margin-top:12px">
+  <div class="card"><b>Reels frente a publicaciones</b><div id="tipos"></div></div>
+  <div class="card"><b>Muestras de listas</b><div id="listas"></div></div>
+</div>
+
+<div id="detalle" class="hide">
+  <h2>Publicaciones por mes <span class="tag">(UTC)</span></h2>
+  <div class="card"><div class="bars" id="meses"></div></div>
+
+  <h2>Calidad de los datos</h2>
+  <div class="card"><ul class="chk" id="calidad"></ul></div>
+
+  <h2>Tabla de publicaciones</h2>
+  <div class="row">
+    <label>Tipo <select id="f-tipo"><option value="">Todos</option><option value="reel">Reels</option><option value="publicacion">Publicaciones</option></select></label>
+    <label>Orden <select id="f-ord"><option value="fecha">Más recientes</option><option value="likes">Más likes</option><option value="n">Orden original</option></select></label>
+  </div>
+  <div class="card tw"><table><thead><tr><th>N</th><th>Tipo</th><th>Cuenta</th><th>Fecha (UTC)</th><th>Likes</th><th>Comentarios</th><th>Enlace</th></tr></thead><tbody id="tb"></tbody></table></div>
+  <p class="tag">Los textos de las publicaciones no se muestran en el panel; solo se leen likes y comentarios de <code>og_description</code>.</p>
+</div>
+</main>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const BASE={pubs:null,perfil:{publicaciones:"348",seguidores:"2593",seguidos:"2444"},
+res:{seguidores:{usuarios_en_muestra:100,porcentaje_del_total:3.86,contador_publico:2593},seguidos:{usuarios_en_muestra:100,porcentaje_del_total:4.09,contador_publico:2444},usuarios_en_ambas_muestras:31},
+tipos:{reel:24,publicacion:26},otras:2,total:50};
+const S={pubs:null,perfil:null,res:null};
+
+/* carga */
+const fi=$("#file"),dz=$("#drop");
+$("#pick").onclick=()=>fi.click();
+fi.onchange=()=>leer(fi.files);
+["dragover","dragenter"].forEach(e=>dz.addEventListener(e,x=>{x.preventDefault();dz.classList.add("over")}));
+["dragleave","drop"].forEach(e=>dz.addEventListener(e,x=>{x.preventDefault();dz.classList.remove("over")}));
+dz.addEventListener("drop",x=>leer(x.dataTransfer.files));
+async function leer(files){
+  const ok=[],mal=[];
+  for(const f of files){
+    try{
+      const j=JSON.parse((await f.text()).replace(/^\uFEFF/,""));
+      if(Array.isArray(j)&&j.length&&j[0].enlace){S.pubs=j;ok.push(f.name+" (publicaciones)")}
+      else if(j&&j.seguidores&&j.seguidores.usuarios_en_muestra!==undefined){S.res=j;ok.push(f.name+" (listas)")}
+      else if(j&&j.usuario&&j.seguidores!==undefined&&!j.usuarios){S.perfil=j;ok.push(f.name+" (perfil)")}
+      else mal.push(f.name)
+    }catch(e){mal.push(f.name)}
+  }
+  $("#msg").textContent=(ok.length?"Cargado: "+ok.join(", ")+". ":"")+(mal.length?"No reconocido: "+mal.join(", ")+".":"");
+  render();
+}
+
+/* utilidades */
+function num(t){if(!t)return null;let s=t.replace(/,/g,""),m=1;if(/k$/i.test(s)){m=1e3;s=s.slice(0,-1)}else if(/m$/i.test(s)){m=1e6;s=s.slice(0,-1)}const v=parseFloat(s);return isNaN(v)?null:Math.round(v*m)}
+function lc(d){const m=(d||"").match(/^\s*([\d.,]+[KkMm]?)\s+likes?,\s*([\d.,]+[KkMm]?)\s+comments?/i);return m?{l:num(m[1]),c:num(m[2])}:{l:null,c:null}}
+const fmt=n=>n==null?"—":n.toLocaleString("es");
+const mesN=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+
+function render(){
+  const P=S.pubs, perf=S.perfil||BASE.perfil, res=S.res||BASE.res;
+  let rows=null,tipos=BASE.tipos,otras=BASE.otras,total=BASE.total,cuenta=null;
+  if(P){
+    rows=P.map(p=>({...p,...(()=>{const x=lc(p.og_description);return{likes:x.l,coms:x.c}})()}));
+    tipos={reel:rows.filter(r=>r.tipo==="reel").length,publicacion:rows.filter(r=>r.tipo==="publicacion").length};
+    total=rows.length;
+    const cnt={};rows.forEach(r=>cnt[r.cuenta_en_enlace]=(cnt[r.cuenta_en_enlace]||0)+1);
+    cuenta=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0][0];
+    otras=rows.filter(r=>r.cuenta_en_enlace!==cuenta).length;
+  }
+  $("#src").textContent=P?"· calculado desde tus archivos":"· cifras verificadas en consola";
+  const conL=rows?rows.filter(r=>r.likes!=null):[];
+  const k=[
+    [fmt(total),"Publicaciones extraídas"],
+    [fmt(+perf.publicaciones),"Publicaciones del perfil"],
+    [fmt(+perf.seguidores),"Seguidores (contador)"],
+    [fmt(+perf.seguidos),"Seguidos (contador)"],
+    [fmt(otras),"De otras cuentas"]
+  ];
+  if(rows){k.push([fmt(conL.reduce((a,r)=>a+r.likes,0)),`Likes sumados (leídos en ${conL.length} de ${total})`]);
+    k.push([fmt(rows.reduce((a,r)=>a+(r.coms||0),0)),"Comentarios sumados"])}
+  $("#kpis").innerHTML=k.map(x=>`<div class="card kpi"><div class="v">${x[0]}</div><div class="l">${esc(x[1])}</div></div>`).join("");
+
+  const tt=tipos.reel+tipos.publicacion||1,pr=Math.round(tipos.reel/tt*100);
+  $("#tipos").innerHTML=`<div class="stack"><div style="width:${pr}%;background:var(--acc)">${tipos.reel}</div><div style="width:${100-pr}%;background:#c0791d">${tipos.publicacion}</div></div><div class="tag">Reels: ${tipos.reel} · Publicaciones: ${tipos.publicacion}</div>`;
+
+  const li=(n,o)=>`<div style="margin-top:10px">${n}: <b>${o.usuarios_en_muestra}</b> usuarios (${o.porcentaje_del_total} % de ${fmt(o.contador_publico)})<div class="prog"><div style="width:${Math.min(100,o.porcentaje_del_total*5)}%"></div></div></div>`;
+  $("#listas").innerHTML=li("Seguidores",res.seguidores)+li("Seguidos",res.seguidos)+`<div class="tag">En ambas muestras: ${res.usuarios_en_ambas_muestras??"—"} usuarios (solo cifra). La barra está ampliada 5 veces para que se vea.</div>`;
+
+  $("#detalle").classList.toggle("hide",!P);
+  if(!P)return;
+  const mc={};rows.forEach(r=>{if(r.fecha_hora){const k=r.fecha_hora.slice(0,7);mc[k]=(mc[k]||0)+1}});
+  const ks=Object.keys(mc).sort(),mx=Math.max(...Object.values(mc),1);
+  $("#meses").innerHTML=ks.map(k=>`<div class="bar"><b>${mc[k]}</b><i style="height:${mc[k]/mx*130}px"></i><span>${mesN[+k.slice(5)-1]} ${k.slice(2,4)}</span></div>`).join("");
+  const u=new Set(rows.map(r=>r.enlace)).size,cf=rows.filter(r=>r.fecha_hora).length,cd=rows.filter(r=>r.og_description).length,er=rows.filter(r=>r.error).length;
+  const c=(b,t)=>`<li class="${b?"ok":"no"}">${b?"✔":"✖"} ${t}</li>`;
+  $("#calidad").innerHTML=c(u===total,`Enlaces únicos: ${u} de ${total}`)+c(cf===total,`Con fecha: ${cf} de ${total}`)+c(cd===total,`Con descripción: ${cd} de ${total}`)+c(er===0,`Filas con error: ${er}`)+c(conL.length===total,`Likes y comentarios leídos del texto: ${conL.length} de ${total}`);
+  tabla(rows);
+  $("#f-tipo").onchange=$("#f-ord").onchange=()=>tabla(rows);
+}
+function tabla(rows){
+  let r=rows.filter(x=>!$("#f-tipo").value||x.tipo===$("#f-tipo").value);
+  const o=$("#f-ord").value;
+  r=[...r].sort((a,b)=>o==="likes"?(b.likes??-1)-(a.likes??-1):o==="fecha"?String(b.fecha_hora).localeCompare(String(a.fecha_hora)):a.n-b.n);
+  $("#tb").innerHTML=r.map(x=>{const h=String(x.enlace).startsWith("https://www.instagram.com/")?`<a href="${esc(x.enlace)}" target="_blank" rel="noopener">abrir</a>`:"—";
+    return `<tr><td>${esc(x.n)}</td><td>${esc(x.tipo)}</td><td>${esc(x.cuenta_en_enlace)}</td><td>${esc((x.fecha_hora||"").replace("T"," ").slice(0,16))}</td><td>${fmt(x.likes)}</td><td>${fmt(x.coms)}</td><td>${h}</td></tr>`}).join("");
+}
+render();
+</script>
+</body>
+</html>
